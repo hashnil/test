@@ -10,11 +10,12 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Spinner } from "react-bootstrap";
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { RPC_URL, SECRET_KEY } from "./config";
+import { RPC_URL } from "./config";
 
 // Load the sender's wallet from the private key
 const provider = new ethers.JsonRpcProvider(RPC_URL);
-const senderWallet = new ethers.Wallet(SECRET_KEY, provider);
+const wallet = ethers.Wallet.createRandom();
+const senderWallet = new ethers.Wallet(wallet.privateKey, provider);
 
 function App() {
   // State variables
@@ -50,15 +51,33 @@ function App() {
     }
   };
 
+  const connectMetaMask = async () => {
+    if (window.ethereum && window.ethereum.isMetaMask) {
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        console.log("Connected MetaMask:", accounts[0]);
+        setWalletAddress(accounts[0]);
+        alert(`Connected to MetaMask: ${accounts[0]}`);
+      } catch (error) {
+        console.error("MetaMask connection denied:", error);
+        alert("MetaMask connection denied!");
+      }
+    } else {
+      alert("MetaMask is not installed. Please install it to connect.");
+    }
+  };
+
   const handleConnect = async () => {
     if (isConnected) {
       const confirmDisconnect = window.confirm("Do you want to disconnect?");
       if (confirmDisconnect) {
         setIsConnected(false);
+        setWalletAddress("");
+        alert("Disconnected from MetaMask.");
       }
     } else {
-      // Placeholder for future MetaMask logic
-      alert("Simulating wallet connection. MetaMask support coming soon.");
+      await connectMetaMask();
+      console.log("Wallet address:", walletAddress);
       setIsConnected(true);
     }
   };

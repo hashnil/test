@@ -7,6 +7,56 @@ import InputGroup from "react-bootstrap/InputGroup";
 import Form from "react-bootstrap/Form";
 import { useEffect, useState } from "react";
 import "./style.css";
+import Papa from "papaparse";
+import { ethers } from "ethers";
+
+const isValidEthereumAddress = (address) => ethers.isAddress(address);
+
+const handleFileUpload = (event) => {
+  const file = fetch(process.env.PUBLIC_URL + "/wallets.csv");
+  if (file) {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        console.log("Parsed results:", results);  // Debugging line
+        if (results.data && Array.isArray(results.data)) {
+          const addresses = results.data.map((row) => row.address.trim());
+          const uniqueAddresses = new Set();
+          const invalidAddresses = [];
+          const duplicateAddresses = [];
+
+          addresses.forEach((address) => {
+            if (!isValidEthereumAddress(address)) {
+              invalidAddresses.push(address);
+            } else if (uniqueAddresses.has(address)) {
+              duplicateAddresses.push(address);
+            } else {
+              uniqueAddresses.add(address);
+            }
+          });
+
+          // Provide feedback to the user
+          if (invalidAddresses.length > 0) {
+            console.error('Invalid addresses found:', invalidAddresses);
+          }
+          if (duplicateAddresses.length > 0) {
+            console.error('Duplicate addresses found:', duplicateAddresses);
+          }
+          if (invalidAddresses.length === 0 && duplicateAddresses.length === 0) {
+            console.log('All addresses are valid and unique.');
+            // Update wallets state with valid unique addresses
+            // setWallets([...uniqueAddresses]);
+          }
+        } else {
+          console.error("Invalid data format:", results.data);
+        }
+      },
+    });
+  } else {
+    console.error("No file selected");
+  }
+};
 
 const SenderTable = (props) => {
   let indexOfLastItem;
@@ -26,12 +76,12 @@ const SenderTable = (props) => {
     setCurrentPage(pageNumber);
   };
   const uploadWallet = async (e) => {
-    // setWallets(dummy);
-    const response = await fetch(process.env.PUBLIC_URL + "/wallets.csv");
-    const data = await response.text();
-    const dataArray = data.replace(/\s/g, "").split(",");
-    const resultArr = dataArray.filter((item) => item !== "");
-    setWallets(resultArr);
+    handleFileUpload(e);
+    // const response = await fetch(process.env.PUBLIC_URL + "/wallets.csv");
+    // const data = await response.text();
+    // const dataArray = data.replace(/\s/g, "").split(",");
+    // const resultArr = dataArray.filter((item) => item !== "");
+    // setWallets(resultArr);
   };
 
   return (
@@ -75,10 +125,16 @@ const SenderTable = (props) => {
       </Pagination> */}
 
       <div className="tableButton">
+        <input
+          type="file"
+          onChange={handleFileUpload}
+          accept=".csv"
+          style={{ display: 'none' }}  // Hide the input
+        />
         <Button
           className="uploadButton"
           disabled={!isConnected}
-          onClick={uploadWallet}
+          onClick={handleFileUpload}
         >
           Upload file
         </Button>
